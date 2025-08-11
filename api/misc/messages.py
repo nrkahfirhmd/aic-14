@@ -1,4 +1,65 @@
+import httpx
+from api.core.config import settings
+
 class Messages():
+    async def send_base_message(to: str, body: str):
+        print(f"Sending message to {to}: {body}") # HAPUS DI PRODUCTION
+        
+        url = f"https://graph.facebook.com/v15.0/{settings.META_PHONE_NUMBER_ID}/messages"
+        headers = {
+            "Authorization": f"Bearer {settings.META_ACCESS_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": to.lstrip("+"),  # nomor tanpa tanda +
+            "type": "text",
+            "text": {"body": body}
+        }
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        
+    async def send_quick_reply(to: str, body: str, **kwargs):
+        print(f"Sending message to {to}: {body}") # HAPUS DI PRODUCTION
+
+        url = f"https://graph.facebook.com/v15.0/{settings.META_PHONE_NUMBER_ID}/messages"
+        headers = {
+            "Authorization": f"Bearer {settings.META_ACCESS_TOKEN}",
+            "Content-Type": "application/json"
+        }
+
+        buttons = []
+        for key, title in kwargs.items():
+            buttons.append({
+                "type": "reply",
+                "reply": {
+                    "id": key,         # misal "quick1"
+                    "title": title     # misal "AAA"
+                }
+            })
+
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": to.lstrip("+"),
+            "type": "interactive",
+            "interactive": {
+                "type": "button",
+                "body": {
+                    "text": body
+                },
+                "action": {
+                    "buttons": buttons
+                }
+            }
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        
     WELCOME_MSG = """Selamat datang di Sobat Warung! 👋
 Yuk mulai dengan isi namamu dulu!
 Ketik dengan format: *Nama : Nama Panggilan*  
