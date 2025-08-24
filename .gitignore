@@ -5,9 +5,7 @@ artifacts_nadi_pasar/
 
 # ==== File ====
 backend_pipeline.ipynb
-Holiday Indonesian.csv
 holidays_events.csv
-oil.csv
 README.md
 stores.csv
 test.csv
