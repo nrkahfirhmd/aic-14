@@ -8,7 +8,7 @@ from api.misc.aggregate import Aggregate
 from api.misc.utils import find_similar_product, predict_demand
 from api.core.database import owner, warung, stock, product, transaction, forecast, collective_buying
 from datetime import datetime, timedelta
-from .functions import get_bundling, run_prediction_pipeline
+from .functions import get_bundling, run_prediction_and_return_product_list
 
 router = APIRouter()
 
@@ -332,6 +332,7 @@ async def whatsapp_webhook(request: Request):
                     "date": normalized_today
                 },
                 {
+                    "date": 1,
                     "warung_id": 1,
                     "product_id": 1,
                     "quantity_sold": 1,
@@ -349,9 +350,26 @@ async def whatsapp_webhook(request: Request):
             )
 
             if today_transactions and warung_info:
-                forecast_results = run_prediction_pipeline(today_transactions, warung_info)
+                forecast_results = run_prediction_and_return_product_list(
+                    laporan_harian=today_transactions,
+                    warung_info=warung_info,
+                    oil_path="data/oil.csv",
+                    holiday_path="data/Holiday Indonesian.csv",
+                    prediction_horizon_days=1
+                )
+                
+                product_names = [f["product"] for f in forecast_results]
+                product_docs = await product.find(
+                    {"product_name": {"$in": product_names}},
+                    {"_id": 1, "product_name": 1}
+                ).to_list(length=None)
+
+                product_name_to_id = {doc["product_name"]: doc["_id"] for doc in product_docs}
                 
                 for f in forecast_results:
+                    product_name = f["product"]
+                    f["product_id"] = product_name_to_id.get(product_name)
+                    
                     await forecast.update_one(
                         {"warung_id": warung_id, "product_id": f["product_id"]},
                         {"$set": {
